@@ -6,6 +6,8 @@ mod tests {
     };
     use std::fs;
     use tempfile::TempDir;
+    use assert_cmd::Command;
+    use predicates::prelude::*;
 
     #[test]
     fn test_validation_noms() {
@@ -131,5 +133,34 @@ mod tests {
         let result = resolve_and_validate_destination(&base_path, "mon-api");
 
         assert!(result.is_err());
+    }
+
+
+    #[test]
+    fn creates_a_project_from_the_standard_profile() {
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        let mut command = Command::cargo_bin("cargo-axum-forge").unwrap();
+
+        command
+            .args(["axum-forge", "new", "mon-api"])
+            .arg("--path")
+            .arg(temp_dir.path())
+            .assert()
+            .success()
+            .stdout(predicate::str::contains(
+                "Project `mon-api` created successfully.",
+            ))
+            .stdout(predicate::str::contains("Profile: standard"))
+            .stdout(predicate::str::contains("cargo run"));
+
+        let project_dir = temp_dir.path().join("mon-api");
+
+        let manifest = fs::read_to_string(project_dir.join("Cargo.toml")).unwrap();
+        assert!(manifest.contains("name = \"mon-api\""));
+
+        assert!(project_dir.join("src/main.rs").is_file());
+        assert!(project_dir.join("README.md").is_file());
+        assert!(project_dir.join(".gitignore").is_file());
     }
 }
