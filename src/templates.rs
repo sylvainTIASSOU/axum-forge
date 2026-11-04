@@ -93,30 +93,31 @@ fn render_directory(
     Ok(())
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn renders_the_standard_profile() {
-        let files = load_standard()
-            .render("mon-api", "mon_api")
-            .unwrap();
+        let files = load_standard().render("mon-api", "mon_api").unwrap();
 
         let cargo_toml = files
             .iter()
-            .find(|file| file.path == Utf8PathBuf::from("Cargo.toml"))
+            .find(|file| file.path.as_str() == "Cargo.toml")
             .expect("Cargo.toml should be generated");
 
         assert!(cargo_toml.content.contains("name = \"mon-api\""));
 
-        assert!(files.iter().any(|file| {
-            file.path == Utf8PathBuf::from("src/main.rs")
-        }));
+        assert!(
+            files
+                .iter()
+                .any(|file| { file.path.as_str() =="src/main.rs"})
+        );
 
-        assert!(files.iter().all(|file| {
-            !file.path.as_str().ends_with(".j2")
-        }));
+        assert!(
+            files
+                .iter()
+                .all(|file| { !file.path.as_str().ends_with(".j2") })
+        );
     }
 }

@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
+    use assert_cmd::Command;
     use camino::Utf8PathBuf;
-    use cargo_axum_forge::cli::{
-        convertir_in_module_name, resolve_and_validate_destination, validate_project_name,
+    use cargo_axum_forge::project::{
+        convert_to_module_name, resolve_and_validate_destination, validate_project_name,
     };
+    use predicates::prelude::*;
     use std::fs;
     use tempfile::TempDir;
-    use assert_cmd::Command;
-    use predicates::prelude::*;
 
     #[test]
     fn test_validation_noms() {
@@ -27,12 +27,12 @@ mod tests {
 
     #[test]
     fn test_conversion_module() {
-        assert_eq!(convertir_in_module_name("mon-api"), "mon_api");
+        assert_eq!(convert_to_module_name("mon-api"), "mon_api");
         assert_eq!(
-            convertir_in_module_name("mon-super-projet-axum"),
+            convert_to_module_name("mon-super-projet-axum"),
             "mon_super_projet_axum"
         );
-        assert_eq!(convertir_in_module_name("deja_valide"), "deja_valide");
+        assert_eq!(convert_to_module_name("deja_valide"), "deja_valide");
     }
 
     /// convert the temporary folde to Utf8PathBuf.
@@ -97,7 +97,7 @@ mod tests {
         let error = resolve_and_validate_destination(&base_path, "mon-api")
             .expect_err("a non-empty directory should be rejected");
 
-        assert!(error.to_string().contains("Impossible to create it"));
+        assert!(error.to_string().contains("is not empty"));
 
         // Le contenu existant doit être conservé.
         assert_eq!(
@@ -134,7 +134,6 @@ mod tests {
 
         assert!(result.is_err());
     }
-
 
     #[test]
     fn creates_a_project_from_the_standard_profile() {

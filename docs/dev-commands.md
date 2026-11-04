@@ -15,3 +15,11 @@
 cargo run -- --help
 cargo run -- axum-forge --help
 cargo run -- axum-forge new --help
+
+
+// after push on github
+cargo fmt --all
+cargo test --all-features
+cargo clippy --all-targets --all-features -- -D warnings
+cargo package --list
+cargo package
