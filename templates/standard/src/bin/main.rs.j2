@@ -1,6 +1,6 @@
 use {{ crate_name }}::app::App;
 
 #[tokio::main]
-async fn main() {
-    App::run().await;
+async fn main() -> anyhow::Result<()> {
+    App::run().await
 }

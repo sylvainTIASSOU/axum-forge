@@ -158,7 +158,7 @@ mod tests {
         let manifest = fs::read_to_string(project_dir.join("Cargo.toml")).unwrap();
         assert!(manifest.contains("name = \"mon-api\""));
 
-        assert!(project_dir.join("src/main.rs").is_file());
+        assert!(project_dir.join("src/bin/main.rs").is_file());
         assert!(project_dir.join("README.md").is_file());
         assert!(project_dir.join(".gitignore").is_file());
     }

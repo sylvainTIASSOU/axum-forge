@@ -18,8 +18,6 @@ cargo run -- axum-forge new --help
 
 
 // after push on github
-cargo fmt --all
-cargo test --all-features
+cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
-cargo package --list
-cargo package
+cargo test --all-features
