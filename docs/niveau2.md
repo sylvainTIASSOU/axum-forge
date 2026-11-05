@@ -1,199 +1,350 @@
+# Étape suivante : créer le socle HTTP Axum
 
-## Contexte du projet
+L’objectif de cette étape doit rester limité :
 
-Je souhaite créer un **projet open source en Rust** : un générateur CLI permettant de démarrer rapidement une API Axum correctement structurée, sans répéter manuellement l’ajout des crates, la création des modules et la configuration des middlewares.
+> Générer une application Axum compilable et testable, avec `/hello`, `/health` et la configuration du port.
 
-Le projet comporte deux parties :
+N’ajoute pas encore :
 
-1. **Un générateur CLI**, installable avec Cargo.
-2. **Un template d’application Axum**, généré par ce CLI.
+- OpenAPI et Swagger UI ;
+- `request_id` ;
+- les logs HTTP JSON ;
+- les middlewares personnalisés.
 
-Le principe serait :
+Ils viendront dans les étapes suivantes.
 
-```bash
-cargo <nom-du-generateur> new mon-api
-```
+## 1. Arborescence à produire
 
-Le nom du générateur reste à choisir.
-
-## Objectif du générateur
-
-Une seule commande doit produire un projet :
-
-- immédiatement compilable ;
-- directement exécutable ;
-- correctement structuré ;
-- documenté avec Swagger UI ;
-- équipé de logs HTTP JSON ;
-- accompagné de tests fonctionnels ;
-- sans framework supplémentaire imposé : le résultat doit rester du Rust/Axum standard.
-
-## Fonctionnalités du MVP
-
-Pour la première version, je veux uniquement :
-
-- une commande `new` ;
-- un seul profil nommé `standard` ;
-- la validation du nom du projet ;
-- la vérification du dossier de destination ;
-- le refus d’écraser un dossier non vide ;
-- la génération de tous les fichiers ;
-- un récapitulatif final avec les commandes de lancement.
-
-Ne pas ajouter dans le MVP :
-
-- PostgreSQL ou SQLx ;
-- authentification ;
-- plusieurs profils ;
-- Docker ;
-- Redis ;
-- OpenTelemetry ;
-- génération de contrôleurs supplémentaires.
-
-Ces fonctionnalités viendront après validation du MVP.
-
-## Structure de l’application générée
+Dans `templates/standard/`, vise cette structure :
 
 ```text
-mon-api/
+standard/
 ├── src/
-│   ├── main.rs
+│   ├── main.rs.j2
 │   ├── lib.rs
 │   ├── app.rs
 │   ├── config.rs
 │   ├── error.rs
 │   ├── state.rs
-│   ├── openapi.rs
 │   ├── controllers/
 │   │   ├── mod.rs
 │   │   ├── hello.rs
 │   │   └── health.rs
-│   ├── models/
-│   │   ├── mod.rs
-│   │   └── message.rs
-│   └── middlewares/
+│   └── models/
 │       ├── mod.rs
-│       ├── request_id.rs
-│       └── request_logging.rs
+│       └── message.rs
 ├── tests/
 │   └── api.rs
 ├── migrations/
 │   └── .gitkeep
 ├── .env.example
 ├── .gitignore
-├── Cargo.toml
-└── README.md
+├── Cargo.toml.j2
+└── README.md.j2
 ```
 
-Responsabilités importantes :
+Seuls les fichiers qui contiennent réellement une variable ont besoin de l’extension `.j2` :
 
-- `main.rs` : démarrage minimal ;
-- `app.rs` : construction du routeur et lancement du serveur ;
-- `config.rs` : configuration et validation ;
-- `state.rs` : état partagé Axum ;
-- `openapi.rs` : document OpenAPI ;
-- `controllers/` : endpoints HTTP ;
-- `middlewares/` : corrélation et journalisation.
+- `Cargo.toml.j2` utilise `project_name` ;
+- `main.rs.j2` utilise `crate_name` ;
+- `README.md.j2` utilise `project_name`.
 
-## Comportement du serveur généré
+Les autres fichiers peuvent rester des fichiers statiques.
 
-- Adresse par défaut : `0.0.0.0`.
-- Port par défaut : **3030**.
-- Port modifiable avec `PORT`.
-- Chargement facultatif de `.env` avec `dotenvy`.
-- `GET /hello` : réponse JSON `Hello World`.
-- `GET /health` : vérification de fonctionnement.
-- Swagger UI : `/swagger-ui`.
-- Spécification OpenAPI : `/api-docs/openapi.json`.
-- Gestion centralisée des erreurs JSON avec `thiserror`.
+## 2. Manifeste du projet généré
 
-## Logs HTTP attendus
+Pour ce socle, le projet généré aura besoin des dépendances suivantes.
 
-Chaque requête terminée doit produire une ligne JSON contenant :
+### Dépendances principales
+
+- `axum` ;
+- `tokio`, avec au minimum les fonctionnalités `macros`, `rt-multi-thread` et `net` ;
+- `serde`, avec `derive` ;
+- `serde_json` ;
+- `thiserror` ;
+- `dotenvy`.
+
+### Dépendances de test
+
+- `tower`, avec `util`, pour appeler le routeur avec `oneshot` ;
+- `http-body-util`, pour lire les corps de réponse.
+
+Ne choisis pas les versions au moment où l’utilisateur exécute le générateur. Sélectionne-les une fois pendant ton développement, vérifie leur compatibilité, puis écris-les explicitement dans `templates/standard/Cargo.toml.j2`.
+
+## 3. Responsabilités des fichiers
+
+### `src/lib.rs`
+
+Expose les modules utilisables par le binaire et les tests :
+
+```rust
+pub mod app;
+pub mod config;
+pub mod controllers;
+pub mod error;
+pub mod models;
+pub mod state;
+```
+
+### `src/main.rs.j2`
+
+Ce fichier doit rester minimal. Il doit :
+
+1. charger la configuration ;
+2. initialiser éventuellement le tracing de base ;
+3. appeler le lancement du serveur ;
+4. retourner l’erreur éventuelle.
+
+C’est ici que tu utiliseras :
+
+```rust
+use {{ crate_name }}::app;
+use {{ crate_name }}::config::Config;
+```
+
+Ainsi, `mon-api` produira un import depuis `mon_api`.
+
+### `src/config.rs`
+
+Crée une structure `Config` contenant au minimum :
+
+```text
+host : 0.0.0.0
+port : 3030 par défaut
+```
+
+Comportement attendu :
+
+- `dotenvy::dotenv().ok()` charge facultativement `.env` ;
+- si `PORT` est absent, utiliser `3030` ;
+- si `PORT` est présent, le convertir en `u16` ;
+- si sa valeur est invalide, retourner une erreur claire.
+
+Sépare si possible la lecture de l’environnement de la conversion du port. Une petite fonction pure comme `parse_port(&str)` sera beaucoup plus facile à tester.
+
+Exemple de `.env.example` :
+
+```dotenv
+PORT=3030
+```
+
+### `src/state.rs`
+
+Crée un état partagé minimal :
+
+```rust
+#[derive(Clone, Default)]
+pub struct AppState;
+```
+
+Il sera volontairement vide pour le MVP, mais il permettra d’ajouter ensuite des services sans modifier toute l’architecture.
+
+### `src/models/message.rs`
+
+Définis des réponses sérialisables avec Serde. Par exemple :
+
+```text
+MessageResponse { message }
+HealthResponse { status }
+```
+
+Évite de renvoyer directement des `serde_json::json!` partout : les structures typées documentent mieux l’API.
+
+### `src/controllers/hello.rs`
+
+Le contrôleur doit répondre à :
+
+```http
+GET /hello
+```
+
+avec :
 
 ```json
 {
-  "requestId": "abc123",
-  "ip": "203.0.113.5",
-  "requestTime": "2026-10-28T10:15:30.123Z",
-  "httpMethod": "POST",
-  "routeKey": "/orders",
-  "status": 201,
-  "protocol": "HTTP/1.1",
-  "responseLength": 512,
-  "responseTime": "12ms"
+  "message": "Hello World"
 }
 ```
 
-Contraintes :
+### `src/controllers/health.rs`
 
-- `requestId` généré par défaut avec UUID ;
-- identifiant propagé dans `x-request-id` ;
-- date UTC au format RFC 3339 ;
-- `routeKey` basé sur le modèle de route Axum, pas sur l’URL brute ;
-- pas de corps de requête, token, cookie ou mot de passe dans les logs ;
-- les en-têtes de proxy comme `X-Forwarded-For` ne doivent être acceptés que si le proxy est explicitement approuvé ;
-- les logs ne doivent pas contaminer les réponses HTTP.
+Le contrôleur doit répondre à :
 
-## Dépendances envisagées
+```http
+GET /health
+```
 
-Pour le générateur :
+avec un statut HTTP `200` et, par exemple :
 
-- `clap` ;
-- `anyhow` ou `thiserror` pour les erreurs internes ;
-- `minijinja` pour les templates ;
-- `include_dir` pour embarquer les templates ;
-- `toml_edit` pour les manifests ;
-- `camino` pour les chemins ;
-- `assert_cmd`, `predicates` et `tempfile` pour les tests.
+```json
+{
+  "status": "ok"
+}
+```
 
-Pour l’application générée :
+### `src/controllers/mod.rs`
 
-- `axum` ;
-- `tokio` ;
-- `serde` et `serde_json` ;
-- `tower` et `tower-http` ;
-- `tracing` et `tracing-subscriber` ;
-- `thiserror` ;
-- `dotenvy` ;
-- `utoipa` et `utoipa-swagger-ui` ;
-- `uuid` ;
-- `time`.
+Expose les deux modules :
 
-Les versions compatibles doivent être centralisées et validées ensemble. Le générateur ne doit pas récupérer arbitrairement les dernières versions à chaque exécution.
+```rust
+pub mod health;
+pub mod hello;
+```
 
-## Tests indispensables
+### `src/app.rs`
 
-Le générateur doit être testé en exécutant réellement son binaire :
+Prévois deux fonctions distinctes :
 
-- création d’un projet dans un dossier temporaire ;
-- vérification de l’arborescence ;
-- refus d’un nom invalide ;
-- refus d’écraser un dossier non vide ;
-- compilation du projet généré ;
-- exécution de ses tests ;
-- vérification de `cargo fmt` et Clippy.
+```rust
+pub fn build_router(state: AppState) -> Router
+```
 
-Le projet généré doit tester :
+et :
 
-- `/hello` ;
-- `/health` ;
-- la présence des endpoints dans OpenAPI ;
-- l’accès à Swagger UI ;
-- le port configurable ;
-- le format des erreurs ;
-- les logs JSON ;
-- la propagation de `x-request-id`.
+```rust
+pub async fn run(config: Config) -> anyhow::Result<()>
+```
 
-## Première étape demandée
+`build_router` enregistre les routes suivantes :
 
-Aide-moi maintenant à **initialiser le dépôt du générateur CLI**, avec :
+```text
+GET /hello
+GET /health
+```
 
-1. son arborescence ;
-2. son `Cargo.toml` ;
-3. la commande `new` avec Clap ;
-4. la validation du nom et du dossier de destination ;
-5. une organisation prête à accueillir les templates Axum ;
-6. les premiers tests du CLI.
+La fonction `run` doit :
 
-Ca sera un projet opensource et je veux tout coder moi mem.  Donne moi par quoi commencer.
+1. construire l’adresse à partir de `Config` ;
+2. créer un `tokio::net::TcpListener` ;
+3. construire le routeur ;
+4. appeler `axum::serve`.
+
+Cette séparation permettra aux tests d’appeler le routeur sans démarrer un vrai serveur.
+
+### `src/error.rs`
+
+Crée une erreur centrale avec `thiserror`, puis implémente `IntoResponse` pour les erreurs HTTP.
+
+Pour le moment, une réponse d’erreur simple suffit :
+
+```json
+{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "message": "Internal server error"
+  }
+}
+```
+
+N’expose pas de détail interne sensible dans la réponse HTTP.
+
+## 4. Tests du projet généré
+
+Dans `templates/standard/tests/api.rs`, ajoute au minimum les tests suivants.
+
+### Endpoint `/hello`
+
+Le test doit :
+
+1. construire le routeur ;
+2. créer une requête `GET /hello` ;
+3. appeler le routeur avec `oneshot` ;
+4. vérifier le statut `200` ;
+5. vérifier le type de contenu JSON ;
+6. lire le corps ;
+7. vérifier `"message": "Hello World"`.
+
+### Endpoint `/health`
+
+Applique le même principe :
+
+- statut `200` ;
+- réponse JSON ;
+- présence de `"status": "ok"`.
+
+### Configuration
+
+Teste séparément les cas suivants :
+
+```text
+PORT absent       -> 3030
+PORT=3031         -> 3031
+PORT=abc          -> erreur
+PORT=70000        -> erreur
+PORT vide         -> erreur
+```
+
+Privilégie les tests d’une fonction pure de parsing plutôt que la modification globale des variables d’environnement dans des tests parallèles.
+
+## 5. Ajouter un test côté générateur
+
+Dans le dépôt `axum-forge`, ajoute un test d’intégration qui exécute réellement :
+
+```bash
+cargo-axum-forge axum-forge new mon-api --path <tempdir>
+```
+
+Ce test doit :
+
+1. vérifier la présence de toute l’arborescence ;
+2. vérifier que `Cargo.toml` contient `name = "mon-api"` ;
+3. vérifier que `main.rs` importe `mon_api` ;
+4. exécuter ensuite :
+
+```bash
+cargo test --manifest-path <tempdir>/mon-api/Cargo.toml
+```
+
+Ce dernier point est essentiel : il garantit que le générateur ne produit pas seulement les bons fichiers, mais un projet réellement compilable et testé.
+
+## 6. Vérification manuelle
+
+Quand les tests automatiques passent, exécute :
+
+```bash
+cargo run -- axum-forge new demo-api --path /tmp
+cargo run --manifest-path /tmp/demo-api/Cargo.toml
+```
+
+Dans un autre terminal :
+
+```bash
+curl http://127.0.0.1:3030/hello
+curl http://127.0.0.1:3030/health
+```
+
+Puis vérifie le port configurable :
+
+```bash
+PORT=3031 cargo run --manifest-path /tmp/demo-api/Cargo.toml
+```
+
+Enfin, dans un autre terminal :
+
+```bash
+curl http://127.0.0.1:3031/health
+```
+
+## Critères pour terminer cette étape
+
+Tu peux considérer le socle terminé lorsque :
+
+- le générateur produit toute l’arborescence attendue ;
+- `mon-api` et `mon_api` sont utilisés aux bons endroits ;
+- le projet généré compile ;
+- `/hello` et `/health` fonctionnent ;
+- le port par défaut est `3030` ;
+- `PORT` est pris en compte et validé ;
+- les tests du projet généré passent ;
+- les tests, le formatage et Clippy du générateur passent ;
+- la CI GitHub est verte.
+
+## Étapes suivantes
+
+Après cela, l’ordre le plus naturel sera :
+
+1. OpenAPI et Swagger UI ;
+2. propagation de `x-request-id` ;
+3. logs HTTP JSON ;
+
+avec leurs tests à chaque étape.

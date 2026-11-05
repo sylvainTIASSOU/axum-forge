@@ -111,7 +111,7 @@ mod tests {
         assert!(
             files
                 .iter()
-                .any(|file| { file.path.as_str() =="src/main.rs"})
+                .any(|file| { file.path.as_str() == "src/main.rs" })
         );
 
         assert!(

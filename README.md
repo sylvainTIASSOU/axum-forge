@@ -6,7 +6,7 @@
 Axum Forge is a Cargo subcommand designed to generate structured Axum
 applications without manually repeating the same project setup.
 
-&gt; **Work in progress:** the current template generates a minimal Rust project.
+ **Work in progress:** the current template generates a minimal Rust project.
 &gt; The complete Axum application, OpenAPI documentation, JSON request logging,
 &gt; and functional tests are still under development.
 
@@ -93,7 +93,7 @@ Hyphens are preserved in the project directory and Cargo package name. They
 are converted to underscores when a Rust crate name is required:
 
 ```text
-mon-api -&gt; mon_api
+mon-api -> mon_api
 ```
 
 ## Destination directories
