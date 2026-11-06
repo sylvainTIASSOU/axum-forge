@@ -56,3 +56,44 @@ async fn health_returns_a_healthy_response() {
     assert_eq!(body["is_healthy"], true);
     assert_eq!(body["status"], 200);
 }
+
+#[tokio::test]
+async fn openapi_document_contains_the_application_endpoints() {
+    let (status, content_type, body) =
+        get_json("/api-docs/openapi.json").await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(content_type, "application/json");
+
+    assert!(body["paths"]["/hello"]["get"].is_object());
+    assert!(body["paths"]["/health"]["get"].is_object());
+
+    assert!(
+        body["components"]["schemas"]["MessageResponse"].is_object()
+    );
+
+    assert!(
+        body["components"]["schemas"]["HealthResponse"].is_object()
+    );
+}
+
+#[tokio::test]
+async fn swagger_ui_returns_the_html_interface() {
+    let request = Request::builder()
+        .method("GET")
+        .uri("/swagger-ui/")
+        .body(Body::empty())
+        .unwrap();
+
+    let response = build_router().oneshot(request).await.unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let content_type = response
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+
+    assert!(content_type.starts_with("text/html"));
+}

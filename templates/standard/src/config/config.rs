@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-
+use console::style;
 #[derive(Clone)]
 pub struct Config {
     pub port: u16,
@@ -18,4 +18,71 @@ impl Config {
 
         Ok(Self { port, host })
     }
+}
+
+use console::style;
+
+pub fn print_startup_banner(base_url: &str) {
+    let swagger_url = format!("{base_url}/swagger-ui/");
+    let openapi_url = format!("{base_url}/api-docs/openapi.json");
+
+    println!();
+
+    println!(
+        "{}",
+        style(
+            r#"                ⚒️
+       ╔═══════════════╗
+       ║  AXUM FORGE   ║
+       ╚═══════════════╝"#
+        )
+        .color256(208)
+        .bold()
+    );
+
+    println!();
+
+    println!(
+        "           {}",
+        style("●  DEVELOPMENT SERVER READY").green().bold()
+    );
+
+    println!("           {}", style("Forge your next API.").dim());
+
+    println!();
+    println!(
+        "  {}",
+        style("────────────────────────────────────────────────────────────").dim()
+    );
+
+    println!(
+        "  {}  {}",
+        style("SERVER  ").color256(208).bold(),
+        style(format!("{base_url} ↗")).cyan().underlined()
+    );
+
+    println!(
+        "  {}  {}",
+        style("SWAGGER ").color256(208).bold(),
+        style(format!("{swagger_url} ↗")).cyan().underlined()
+    );
+
+    println!(
+        "  {}  {}",
+        style("OPENAPI ").color256(208).bold(),
+        style(format!("{openapi_url} ↗")).cyan().underlined()
+    );
+
+    println!(
+        "  {}",
+        style("────────────────────────────────────────────────────────────").dim()
+    );
+
+    println!();
+
+    println!(
+        "  {}  {} to stop the server\n",
+        style("●").green(),
+        style("Ctrl+C").bold()
+    );
 }

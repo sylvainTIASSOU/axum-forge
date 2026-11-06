@@ -1,0 +1,2 @@
+[alias]
+dev = "!watchexec --restart --clear --watch src --watch Cargo.toml -- cargo run"

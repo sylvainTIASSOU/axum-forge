@@ -1,16 +1,18 @@
-use crate::config::config::Config;
+use crate::config::config::{Config, print_startup_banner};
 use crate::controllers::{health, hello};
+use crate::openapi::ApiDoc;
+use anyhow::{Context, Result};
 use axum::Router;
 use axum::routing::get;
 use tokio::net::TcpListener;
-use anyhow::{Context, Result};
-
-
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 pub fn build_router() -> Router {
     Router::new()
         .route("/health", get(health::health_handler))
         .route("/hello", get(hello::hello_handler))
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
 }
 
 pub struct App;
@@ -31,7 +33,16 @@ impl App {
             .local_addr()
             .context("Failed to read the server local address")?;
 
-        println!("Server is listening on http://{local_address}");
+        let display_host = match config.host.as_str() {
+            // 0.0.0.0 est une adresse d'écoute, mais 127.0.0.1 est
+            // plus pratique pour ouvrir l'application localement.
+            "0.0.0.0" => "127.0.0.1",
+            host => host,
+        };
+
+        let base_url = format!("http://{}:{}", display_host, local_address.port());
+
+        print_startup_banner(&base_url);
 
         axum::serve(listener, build_router())
             .await

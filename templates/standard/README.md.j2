@@ -1,3 +1,27 @@
 # {{ project_name }}
 
 Projet généré avec Axum Forge.
+## Development
+
+Run the server normally:
+
+```bash
+cargo run
+```
+
+Run the development server with automatic restart:
+
+```bash
+cargo dev
+```
+
+This command requires [watchexec](https://github.com/watchexec/watchexec):
+
+```bash
+cargo install watchexec-cli --locked
+```
+
+When a Rust source file or `Cargo.toml` is modified, the project is rebuilt
+and the server is restarted automatically.
+
+Press `Ctrl+C` to stop the watcher.
