@@ -162,4 +162,34 @@ mod tests {
         assert!(project_dir.join("README.md").is_file());
         assert!(project_dir.join(".gitignore").is_file());
     }
+
+    #[test]
+fn generated_project_compiles_and_passes_its_tests() {
+    let temp_dir = tempfile::tempdir().unwrap();
+
+    Command::cargo_bin("cargo-axum-forge")
+        .unwrap()
+        .args(["axum-forge", "new", "mon-api"])
+        .arg("--path")
+        .arg(temp_dir.path())
+        .assert()
+        .success();
+
+    let project_dir = temp_dir.path().join("mon-api");
+    let cargo =
+        std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+
+    let output = std::process::Command::new(cargo)
+        .current_dir(&project_dir)
+        .args(["test", "--all-targets"])
+        .output()
+        .expect("failed to run tests in the generated project");
+
+    assert!(
+        output.status.success(),
+        "The generated project is invalid.\n\nstdout:\n{}\n\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+}
 }

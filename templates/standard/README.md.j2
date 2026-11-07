@@ -21,6 +21,12 @@ This command requires [watchexec](https://github.com/watchexec/watchexec):
 cargo install watchexec-cli --locked
 ```
 
+# Development: colored, human-readable logs
+LOG_FORMAT=pretty cargo run
+
+# Production or log collectors: structured JSON logs
+LOG_FORMAT=json cargo run
+
 When a Rust source file or `Cargo.toml` is modified, the project is rebuilt
 and the server is restarted automatically.
 

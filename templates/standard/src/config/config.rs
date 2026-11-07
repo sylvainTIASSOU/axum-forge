@@ -20,8 +20,6 @@ impl Config {
     }
 }
 
-use console::style;
-
 pub fn print_startup_banner(base_url: &str) {
     let swagger_url = format!("{base_url}/swagger-ui/");
     let openapi_url = format!("{base_url}/api-docs/openapi.json");

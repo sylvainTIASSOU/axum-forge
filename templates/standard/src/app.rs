@@ -1,25 +1,36 @@
 use crate::config::config::{Config, print_startup_banner};
+use crate::config::{log, telemetry};
 use crate::controllers::{health, hello};
 use crate::openapi::ApiDoc;
 use anyhow::{Context, Result};
-use axum::Router;
-use axum::routing::get;
+use axum::{Router, http::HeaderName, routing::get};
+use std::net::SocketAddr;
 use tokio::net::TcpListener;
+use tower_http::{
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
+    trace::TraceLayer,
+};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use crate::error::normalize_errors;
+use axum::middleware::from_fn;
 
 pub fn build_router() -> Router {
+    let request_id_header = HeaderName::from_static("x-request-id");
+
     Router::new()
         .route("/health", get(health::health_handler))
         .route("/hello", get(hello::hello_handler))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .layer(from_fn(normalize_errors))
+        .layer(PropagateRequestIdLayer::new(request_id_header.clone()))
         .layer(
             TraceLayer::new_for_http()
-                .make_span_with(config::telemetry::make_span_with)
-                .on_request(config::telemetry::on_request)
-                .on_response(config::telemetry::on_response)
-                .on_failure(config::telemetry::on_failure),
+                .make_span_with(telemetry::make_span_with)
+                .on_response(telemetry::on_response)
+                .on_failure(telemetry::on_failure),
         )
+        .layer(SetRequestIdLayer::new(request_id_header, MakeRequestUuid))
 }
 
 pub struct App;
@@ -30,7 +41,7 @@ impl App {
 
         // L'erreur de configuration est remontée à main.
         let config = Config::from_env()?;
-        config::log::log().setup()?;
+        log::setup()?;
 
         let address = format!("{}:{}", config.host, config.port);
 
@@ -53,9 +64,12 @@ impl App {
 
         print_startup_banner(&base_url);
 
-        axum::serve(listener, build_router())
-            .await
-            .context("Axum server failed")?;
+        axum::serve(
+            listener,
+            build_router().into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await
+        .context("Axum server failed")?;
 
         Ok(())
     }

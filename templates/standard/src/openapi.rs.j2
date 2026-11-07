@@ -14,7 +14,9 @@ use utoipa::OpenApi;
     components(
         schemas(
             crate::models::message::MessageResponse,
-            crate::models::message::HealthResponse
+            crate::models::message::HealthResponse,
+            crate::error::ErrorResponse,
+        crate::error::ErrorBody
         )
     ),
     tags(
