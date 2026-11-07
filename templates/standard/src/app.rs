@@ -1,4 +1,4 @@
-use crate::config::config::{Config, print_startup_banner};
+use crate::config::settings::{Config, print_startup_banner};
 use crate::config::{log, telemetry};
 use crate::controllers::{health, hello};
 use crate::openapi::ApiDoc;

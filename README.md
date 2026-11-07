@@ -1,35 +1,40 @@
 # Axum Forge
 
 [![CI](https://github.com/sylvainTIASSOU/axum-forge/actions/workflows/ci.yml/badge.svg)](https://github.com/sylvainTIASSOU/axum-forge/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE-MIT)
 
-Axum Forge is a Cargo subcommand designed to generate structured Axum
-applications without manually repeating the same project setup.
+Axum Forge is a Cargo subcommand that generates structured, immediately
+runnable Axum applications without repeating the same project setup.
 
- **Work in progress:** the current template generates a minimal Rust project.
-&gt; The complete Axum application, OpenAPI documentation, JSON request logging,
-&gt; and functional tests are still under development.
+The `standard` template includes HTTP endpoints, OpenAPI documentation,
+Swagger UI, structured logs, request IDs, centralized JSON errors, and
+functional tests.
 
-## Goals
+&gt; **Work in progress:** Axum Forge is under active development and has not
+&gt; been published on crates.io yet.
 
-The project aims to provide a single command that creates a project that is:
+## Features
 
-- immediately buildable and runnable;
-- cleanly structured using standard Rust and Axum;
-- documented with OpenAPI and Swagger UI;
-- equipped with structured JSON HTTP logs;
-- covered by functional tests;
-- independent from Axum Forge at runtime.
+The generated `standard` project provides:
+
+- a Rust 2024 and Axum application;
+- `GET /hello` and `GET /health` endpoints;
+- OpenAPI documentation and Swagger UI;
+- JSON or colored human-readable HTTP logs;
+- `x-request-id` generation and propagation;
+- centralized JSON error responses;
+- functional and unit tests;
+- environment-based configuration;
+- no runtime dependency on Axum Forge.
 
 ## Installation
 
-Axum Forge is not published on crates.io yet. You can install it from the
-source repository:
+Install the generator from the source repository:
 
 ```bash
 git clone https://github.com/sylvainTIASSOU/axum-forge.git
 cd axum-forge
-cargo install --path .
+cargo install --path . --locked
 ```
 
 Verify the installation:
@@ -38,31 +43,40 @@ Verify the installation:
 cargo axum-forge --help
 ```
 
-## Usage
+## Quick start
 
-Create a project in the current directory:
+Generate a new application:
 
 ```bash
 cargo axum-forge new mon-api
 ```
 
-Create a project inside another parent directory:
+Start it:
+
+```bash
+cd mon-api
+cargo run
+```
+
+The following endpoints are available by default:
+
+```text
+http://127.0.0.1:3030/hello
+http://127.0.0.1:3030/health
+http://127.0.0.1:3030/swagger-ui/
+http://127.0.0.1:3030/api-docs/openapi.json
+```
+
+To create the project inside another parent directory:
 
 ```bash
 cargo axum-forge new mon-api --path ./projects
 ```
 
-The second command creates the project at:
+This creates:
 
 ```text
 ./projects/mon-api
-```
-
-After generation, start the project with:
-
-```bash
-cd mon-api
-cargo run
 ```
 
 ## Project names
@@ -89,14 +103,14 @@ mon api
 ../mon-api
 ```
 
-Hyphens are preserved in the project directory and Cargo package name. They
-are converted to underscores when a Rust crate name is required:
+Hyphens are preserved in the directory and Cargo package name. They are
+converted to underscores for the Rust crate name:
 
 ```text
-mon-api -> mon_api
+mon-api -&gt; mon_api
 ```
 
-## Destination directories
+## Destination safety
 
 The destination directory may either:
 
@@ -106,52 +120,182 @@ The destination directory may either:
 Axum Forge refuses to generate a project into a non-empty directory or over
 an existing file. Existing content is never intentionally overwritten.
 
-## Current generated project
-
-The current development template produces the following structure:
+## Generated project structure
 
 ```text
 mon-api/
+├── .cargo/
+│   └── config.toml
 ├── src/
-│   └── main.rs
+│   ├── bin/
+│   │   └── main.rs
+│   ├── config/
+│   │   ├── log.rs
+│   │   ├── settings.rs
+│   │   ├── telemetry.rs
+│   │   └── mod.rs
+│   ├── controllers/
+│   │   ├── health.rs
+│   │   ├── hello.rs
+│   │   └── mod.rs
+│   ├── error/
+│   │   └── mod.rs
+│   ├── models/
+│   │   ├── message.rs
+│   │   └── mod.rs
+│   ├── app.rs
+│   ├── lib.rs
+│   └── openapi.rs
+├── tests/
+│   ├── api.rs
+│   └── errors.rs
+├── .env.example
 ├── .gitignore
 ├── Cargo.toml
 └── README.md
 ```
 
-You can verify the generated project with:
+## Configuration
+
+The generated application supports the following environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `HOST` | `0.0.0.0` | Address on which the HTTP server listens |
+| `PORT` | `3030` | TCP port used by the HTTP server |
+| `RUST_LOG` | `info` | Tracing filter, such as `info`, `debug`, or `trace` |
+| `LOG_FORMAT` | `json` | Log output format: `json` or `pretty` |
+
+To use the provided local development configuration:
 
 ```bash
-cd mon-api
-cargo check
+cp .env.example .env
 cargo run
 ```
 
-## Planned standard profile
+The supplied `.env.example` selects `LOG_FORMAT=pretty` for local
+development. Without a `.env` file or an explicit `LOG_FORMAT`, logs use
+JSON.
 
-The complete `standard` profile will provide:
+## HTTP logging
 
-- an Axum HTTP server;
-- `/hello` and `/health` endpoints;
-- centralized JSON error handling;
-- application configuration through environment variables;
-- OpenAPI documentation and Swagger UI;
-- request identifiers and structured JSON HTTP logs;
-- functional tests.
+Use colored, human-readable logs during development:
 
-The MVP intentionally excludes:
+```bash
+LOG_FORMAT=pretty RUST_LOG=info cargo run
+```
 
-- PostgreSQL and SQLx;
-- authentication;
-- multiple profiles;
-- Docker;
-- Redis;
-- OpenTelemetry;
-- additional controller generation.
+Use structured JSON logs for production or log collectors:
 
-These features may be considered after the MVP is complete and validated.
+```bash
+LOG_FORMAT=json RUST_LOG=info cargo run
+```
 
-## Development
+HTTP log fields include:
+
+```text
+request_id
+method
+routeKey
+client_ip
+status
+latency_ms
+```
+
+Log levels are selected from the HTTP status:
+
+- `1xx`, `2xx`, and `3xx`: `INFO`;
+- `4xx`: `WARN`;
+- `5xx`: `ERROR`.
+
+`routeKey` uses the Axum matched route pattern. Unknown routes use
+`"unmatched"`.
+
+Request bodies, cookies, authorization headers, and query strings are not
+logged. `client_ip` is taken from the direct peer connection;
+`X-Forwarded-For` is not trusted automatically.
+
+## Request IDs
+
+Every request receives an `x-request-id`:
+
+- an existing incoming value is propagated;
+- otherwise, a UUID is generated;
+- the value is included in the response headers, HTTP logs, and JSON errors.
+
+Example:
+
+```bash
+curl -i \
+  -H 'x-request-id: demo-123' \
+  http://127.0.0.1:3030/hello
+```
+
+## JSON errors
+
+Errors use a consistent JSON structure:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "The requested resource was not found",
+    "request_id": "demo-123"
+  }
+}
+```
+
+The standard error codes include:
+
+| HTTP status | Code |
+|---|---|
+| `400` | `bad_request` |
+| `404` | `not_found` |
+| `405` | `method_not_allowed` |
+| `500` | `internal_server_error` |
+
+Internal errors expose only a generic public message. Implementation details
+must remain in the server logs and must never be added to the public error
+message.
+
+## Generated project development
+
+Run the application normally:
+
+```bash
+cargo run
+```
+
+Run it with automatic restart:
+
+```bash
+cargo dev
+```
+
+The `dev` alias requires
+[watchexec](https://github.com/watchexec/watchexec):
+
+```bash
+cargo install watchexec-cli --locked
+```
+
+When a Rust source file or `Cargo.toml` changes, watchexec rebuilds and
+restarts the application. This is an automatic restart, not state-preserving
+hot reload.
+
+Axum Forge is not required to build, test, or run the generated application.
+
+## Generated project verification
+
+From the generated project directory:
+
+```bash
+cargo fmt --all -- --check
+cargo test --all-targets
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+## Axum Forge development
 
 Clone the repository:
 
@@ -166,89 +310,34 @@ Run the generator without installing it:
 cargo run -- axum-forge new mon-api --path /tmp
 ```
 
-On Windows, you can use another existing parent directory:
-
-```powershell
-cargo run -- axum-forge new mon-api --path .\sandbox
-```
-
-Run the project checks:
+Run all generator checks:
 
 ```bash
 cargo fmt --all -- --check
 cargo check --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-features
-```
-
-Verify the contents and construction of the Cargo package:
-
-```bash
-cargo package --list
 cargo package
 ```
 
-## Repository structure
+The integration tests execute the real generator binary and compile and test
+a generated project.
 
-```text
-axum-forge/
-├── src/
-│   ├── main.rs          # Process entry point
-│   ├── lib.rs           # Library modules
-│   ├── app.rs           # Command dispatch
-│   ├── cli.rs           # Clap command-line definitions
-│   ├── project.rs       # Project name and destination validation
-│   ├── templates.rs     # Template loading and rendering
-│   └── commands/
-│       ├── mod.rs
-│       └── new.rs       # New-project orchestration
-├── templates/
-│   └── standard/        # Embedded standard template
-├── tests/
-│   └── cli_new.rs       # Command-line integration tests
-├── .github/
-│   └── workflows/
-│       └── ci.yml       # Continuous integration
-├── Cargo.toml
-├── Cargo.lock
-├── LICENSE-MIT
-└── README.md
-```
+## MVP scope
 
-## How the generator works
+The MVP intentionally excludes:
 
-The `new` command follows these steps:
+- PostgreSQL and SQLx;
+- authentication;
+- multiple generation profiles;
+- Docker;
+- Redis;
+- OpenTelemetry;
+- additional controller generation;
+- state-preserving hot reload.
 
-1. Validate the project name.
-2. Compute the destination path.
-3. Validate the destination directory.
-4. Load the embedded `standard` profile.
-5. Render the templates with MiniJinja.
-6. Write the generated files.
-7. Display the project location and next commands.
-
-Templates are embedded in the executable at compile time. The installed
-generator therefore does not require access to the source repository at
-runtime.
-
-Files ending in `.j2` are rendered as templates, and the `.j2` extension is
-removed from their output paths.
-
-## Contributing
-
-Contributions, bug reports, and suggestions are welcome.
-
-Before submitting a pull request:
-
-1. Keep the change focused.
-2. Add or update tests when behavior changes.
-3. Run the formatting, Clippy, and test commands listed above.
-4. Update the documentation when necessary.
-
-By contributing to this project, you agree that your contributions will be
-licensed under the MIT License.
+These features may be considered after the MVP has been fully validated.
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE-MIT](LICENSE-MIT)
-for the full license text.
+Axum Forge is distributed under the MIT license. See [LICENSE-MIT](LICENSE-MIT).

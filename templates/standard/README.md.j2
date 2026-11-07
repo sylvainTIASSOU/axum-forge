@@ -1,33 +1,162 @@
 # {{ project_name }}
 
-Projet généré avec Axum Forge.
-## Development
+An Axum application generated with
+[Axum Forge](https://github.com/sylvainTIASSOU/axum-forge).
 
-Run the server normally:
+## Requirements
+
+- a stable Rust toolchain with Rust 2024 edition support;
+- [watchexec](https://github.com/watchexec/watchexec), only if you want to
+  use the optional `cargo dev` command.
+
+Axum Forge is not required to build, test, or run this application.
+
+## Quick start
+
+Create a local configuration file:
+
+```bash
+cp .env.example .env
+```
+
+Start the server:
 
 ```bash
 cargo run
 ```
 
-Run the development server with automatic restart:
+Available endpoints:
 
-```bash
-cargo dev
+| Endpoint | Description |
+|---|---|
+| `GET /hello` | Returns a greeting message |
+| `GET /health` | Returns the application health status |
+| `GET /swagger-ui/` | Opens Swagger UI |
+| `GET /api-docs/openapi.json` | Returns the OpenAPI document |
+
+With the default configuration, Swagger UI is available at:
+
+```text
+http://127.0.0.1:3030/swagger-ui/
 ```
 
-This command requires [watchexec](https://github.com/watchexec/watchexec):
+## Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `HOST` | `0.0.0.0` | Address on which the server listens |
+| `PORT` | `3030` | TCP port used by the server |
+| `RUST_LOG` | `info` | Tracing filter, such as `info`, `debug`, or `trace` |
+| `LOG_FORMAT` | `json` | Log format: `json` or `pretty` |
+
+The provided `.env.example` contains:
+
+```dotenv
+HOST=0.0.0.0
+PORT=3030
+RUST_LOG=info
+LOG_FORMAT=pretty
+```
+
+`HOST=0.0.0.0` is a listening address. For local browser access, use
+`127.0.0.1`.
+
+## Logging
+
+Use colored, human-readable logs during development:
+
+```bash
+LOG_FORMAT=pretty RUST_LOG=info cargo run
+```
+
+Use structured JSON logs for production or log collectors:
+
+```bash
+LOG_FORMAT=json RUST_LOG=info cargo run
+```
+
+HTTP logs contain the request ID, method, matched route, direct peer IP,
+response status, and latency.
+
+The application does not log request bodies, cookies, authorization headers,
+or query strings. `X-Forwarded-For` is not trusted automatically.
+
+## Request IDs
+
+The server preserves an incoming `x-request-id` or generates one when it is
+missing:
+
+```bash
+curl -i \
+  -H 'x-request-id: demo-123' \
+  http://127.0.0.1:3030/hello
+```
+
+The same identifier is included in the response headers and HTTP logs.
+
+## Error responses
+
+Errors are returned as JSON:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "The requested resource was not found",
+    "request_id": "demo-123"
+  }
+}
+```
+
+For example:
+
+```bash
+curl -i \
+  -H 'x-request-id: demo-123' \
+  http://127.0.0.1:3030/unknown-route
+```
+
+Standard error codes include:
+
+- `bad_request` for HTTP `400`;
+- `not_found` for HTTP `404`;
+- `method_not_allowed` for HTTP `405`;
+- `internal_server_error` for HTTP `500`.
+
+Internal errors always use a generic public message. Sensitive
+implementation details must not be returned to the client.
+
+## Development with automatic restart
+
+Install watchexec once:
 
 ```bash
 cargo install watchexec-cli --locked
 ```
 
-# Development: colored, human-readable logs
-LOG_FORMAT=pretty cargo run
+Then run:
 
-# Production or log collectors: structured JSON logs
-LOG_FORMAT=json cargo run
+```bash
+cargo dev
+```
 
-When a Rust source file or `Cargo.toml` is modified, the project is rebuilt
-and the server is restarted automatically.
+When a Rust source file or `Cargo.toml` changes, the application is rebuilt
+and restarted automatically.
 
-Press `Ctrl+C` to stop the watcher.
+This is an automatic restart, not state-preserving hot reload.
+
+## Tests and checks
+
+Run all tests:
+
+```bash
+cargo test --all-targets
+```
+
+Run the formatting, compilation, and Clippy checks:
+
+```bash
+cargo fmt --all -- --check
+cargo check --all-targets --all-features
+cargo clippy --all-targets --all-features -- -D warnings
+```
