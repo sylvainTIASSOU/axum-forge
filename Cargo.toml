@@ -14,6 +14,7 @@ categories = [
 include = [
     "src/**",
     "templates/**",
+    "tests/**",
     "Cargo.toml",
     "Cargo.lock",
     "README.md",
