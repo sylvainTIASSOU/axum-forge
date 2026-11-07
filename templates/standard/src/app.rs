@@ -13,6 +13,13 @@ pub fn build_router() -> Router {
         .route("/health", get(health::health_handler))
         .route("/hello", get(hello::hello_handler))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(config::telemetry::make_span_with)
+                .on_request(config::telemetry::on_request)
+                .on_response(config::telemetry::on_response)
+                .on_failure(config::telemetry::on_failure),
+        )
 }
 
 pub struct App;
@@ -23,6 +30,8 @@ impl App {
 
         // L'erreur de configuration est remontée à main.
         let config = Config::from_env()?;
+        config::log::log().setup()?;
+
         let address = format!("{}:{}", config.host, config.port);
 
         let listener = TcpListener::bind(&address)
