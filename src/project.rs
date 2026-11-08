@@ -5,15 +5,12 @@ use std::sync::OnceLock;
 
 const RUST_KEYWORDS: &[&str] = &[
     // Strict keywords.
-    "as", "async", "await", "break", "const", "continue", "crate",
-    "dyn", "else", "enum", "extern", "false", "fn", "for", "if",
-    "impl", "in", "let", "loop", "match", "mod", "move", "mut",
-    "pub", "ref", "return", "self", "static", "struct", "super",
-    "trait", "true", "type", "unsafe", "use", "where", "while",
-    // Reserved keywords.
-    "abstract", "become", "box", "do", "final", "gen", "macro",
-    "override", "priv", "try", "typeof", "unsized", "virtual",
-    "yield",
+    "as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum", "extern",
+    "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub",
+    "ref", "return", "self", "static", "struct", "super", "trait", "true", "type", "unsafe", "use",
+    "where", "while", // Reserved keywords.
+    "abstract", "become", "box", "do", "final", "gen", "macro", "override", "priv", "try", "typeof",
+    "unsized", "virtual", "yield",
 ];
 
 pub fn convert_to_module_name(project_name: &str) -> String {
@@ -31,8 +28,7 @@ pub fn validate_project_name(project_name: &str) -> bool {
     let regex = REGEX_NAME.get_or_init(|| {
         // Start with a lowercase ASCII letter, followed by lowercase
         // ASCII letters, digits, hyphens, or underscores.
-        Regex::new(r"^[a-z][a-z0-9_-]*$")
-            .expect("the project name regex should be valid")
+        Regex::new(r"^[a-z][a-z0-9_-]*$").expect("the project name regex should be valid")
     });
 
     regex.is_match(project_name) && !is_rust_keyword(project_name)
@@ -51,9 +47,7 @@ pub fn resolve_and_validate_destination(
         );
 
         let mut entries = std::fs::read_dir(destination.as_std_path())
-            .with_context(|| {
-                format!("Failed to read directory {destination}")
-            })?;
+            .with_context(|| format!("Failed to read directory {destination}"))?;
 
         ensure!(
             entries.next().is_none(),

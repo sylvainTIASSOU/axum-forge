@@ -1,6 +1,6 @@
 use crate::project::{
-    convert_to_module_name, is_rust_keyword,
-    resolve_and_validate_destination, validate_project_name,
+    convert_to_module_name, is_rust_keyword, resolve_and_validate_destination,
+    validate_project_name,
 };
 use crate::templates::RenderedFile;
 use crate::{cli, templates};
@@ -8,27 +8,20 @@ use anyhow::{Context, Result, ensure};
 use camino::{Utf8Path, Utf8PathBuf};
 use std::fs;
 
-fn write_files(
-    destination: &Utf8Path,
-    files: &[RenderedFile],
-) -> Result<usize> {
-    fs::create_dir_all(destination.as_std_path()).with_context(|| {
-        format!("Failed to create project directory {destination}")
-    })?;
+fn write_files(destination: &Utf8Path, files: &[RenderedFile]) -> Result<usize> {
+    fs::create_dir_all(destination.as_std_path())
+        .with_context(|| format!("Failed to create project directory {destination}"))?;
 
     for file in files {
         let output_path = destination.join(&file.path);
 
         if let Some(parent) = output_path.parent() {
-            fs::create_dir_all(parent.as_std_path()).with_context(|| {
-                format!("Failed to create directory {parent}")
-            })?;
+            fs::create_dir_all(parent.as_std_path())
+                .with_context(|| format!("Failed to create directory {parent}"))?;
         }
 
         fs::write(output_path.as_std_path(), &file.content)
-            .with_context(|| {
-                format!("Failed to write file {output_path}")
-            })?;
+            .with_context(|| format!("Failed to write file {output_path}"))?;
     }
 
     Ok(files.len())
@@ -70,19 +63,13 @@ pub fn run_new(args: cli::NewArgs) -> Result<()> {
     // use underscores instead.
     let crate_name = convert_to_module_name(&args.name);
 
-    let destination =
-        resolve_and_validate_destination(&args.path, &args.name)?;
+    let destination = resolve_and_validate_destination(&args.path, &args.name)?;
 
     let profile = templates::load_standard();
     let files = profile.render(&args.name, &crate_name)?;
     let files_created = write_files(&destination, &files)?;
 
-    print_summary(
-        &args.name,
-        profile.name(),
-        &destination,
-        files_created,
-    );
+    print_summary(&args.name, profile.name(), &destination, files_created);
 
     Ok(())
 }
