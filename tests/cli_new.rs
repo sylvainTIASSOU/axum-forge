@@ -10,23 +10,37 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn test_validation_noms() {
-        // Cas acceptés
+    fn validates_project_names() {
+        // Valid names.
         assert!(validate_project_name("mon-api"));
         assert!(validate_project_name("mon_api"));
         assert!(validate_project_name("api2"));
         assert!(validate_project_name("a"));
+        assert!(validate_project_name("type-api"));
+        assert!(validate_project_name("match-service"));
+        assert!(validate_project_name("union"));
 
-        // Cas refusés
-        assert!(!validate_project_name("Mon-API")); // Majuscules
-        assert!(!validate_project_name("mon api")); // Espace
-        assert!(!validate_project_name("../mon-api")); // Séparateurs de chemin
-        assert!(!validate_project_name(".")); // Point
-        assert!(!validate_project_name("2api")); // Commence par un chiffre
+        // Invalid syntax.
+        assert!(!validate_project_name(""));
+        assert!(!validate_project_name("Mon-API"));
+        assert!(!validate_project_name("mon api"));
+        assert!(!validate_project_name("../mon-api"));
+        assert!(!validate_project_name("."));
+        assert!(!validate_project_name("2api"));
     }
 
     #[test]
-    fn test_conversion_module() {
+    fn rejects_reserved_rust_keywords() {
+        for keyword in ["type", "fn", "crate", "match", "self", "gen", "yield"] {
+            assert!(
+                !validate_project_name(keyword),
+                "`{keyword}` should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn converts_package_names_to_crate_names() {
         assert_eq!(convert_to_module_name("mon-api"), "mon_api");
         assert_eq!(
             convert_to_module_name("mon-super-projet-axum"),
@@ -39,6 +53,22 @@ mod tests {
     fn base_path(temp_dir: &TempDir) -> Utf8PathBuf {
         Utf8PathBuf::from_path_buf(temp_dir.path().to_path_buf())
             .expect("temporary directory path should be valid UTF-8")
+    }
+
+    #[test]
+    fn rejects_a_reserved_keyword_without_creating_a_directory() {
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        Command::cargo_bin("cargo-axum-forge")
+            .unwrap()
+            .args(["axum-forge", "new", "type"])
+            .arg("--path")
+            .arg(temp_dir.path())
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("reserved Rust keyword"));
+
+        assert!(!temp_dir.path().join("type").exists());
     }
 
     #[test]

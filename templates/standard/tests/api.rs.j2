@@ -10,7 +10,7 @@ use http_body_util::BodyExt;
 use serde_json::Value;
 use tower::ServiceExt;
 
-/// Envoie une requête GET au routeur et décode une réponse JSON.
+/// Sends a GET request to the router and decodes the JSON response.
 async fn get_json(uri: &str) -> (StatusCode, String, Value) {
     let request = Request::builder()
         .method("GET")
@@ -276,7 +276,7 @@ async fn wrong_method_returns_a_json_405_and_preserves_allow() {
         StatusCode::METHOD_NOT_ALLOWED
     );
 
-    // L'en-tête Allow de la réponse Axum doit être conservé.
+  // Axum's Allow header must be preserved.
     assert!(response.headers().contains_key(ALLOW));
 
     assert_eq!(

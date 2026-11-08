@@ -1,8 +1,10 @@
 use crate::config::settings::{Config, print_startup_banner};
 use crate::config::{log, telemetry};
 use crate::controllers::{health, hello};
+use crate::error::normalize_errors;
 use crate::openapi::ApiDoc;
 use anyhow::{Context, Result};
+use axum::middleware::from_fn;
 use axum::{Router, http::HeaderName, routing::get};
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
@@ -12,8 +14,6 @@ use tower_http::{
 };
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use crate::error::normalize_errors;
-use axum::middleware::from_fn;
 
 pub fn build_router() -> Router {
     let request_id_header = HeaderName::from_static("x-request-id");
@@ -39,7 +39,7 @@ impl App {
     pub async fn run() -> Result<()> {
         dotenvy::dotenv().ok();
 
-        // L'erreur de configuration est remontée à main.
+        // Configuration errors are propagated to main.
         let config = Config::from_env()?;
         log::setup()?;
 
@@ -54,8 +54,8 @@ impl App {
             .context("Failed to read the server local address")?;
 
         let display_host = match config.host.as_str() {
-            // 0.0.0.0 est une adresse d'écoute, mais 127.0.0.1 est
-            // plus pratique pour ouvrir l'application localement.
+            // 0.0.0.0 is a listening address, while 127.0.0.1 is
+            // more convenient for opening the application locally.
             "0.0.0.0" => "127.0.0.1",
             host => host,
         };

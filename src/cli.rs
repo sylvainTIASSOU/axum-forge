@@ -1,13 +1,13 @@
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
 
-/// Structure principale correspondant à la ligne de commande.
+/// Principal structure corresponding to the command line.
 #[derive(Debug, Parser)]
 #[command(
     name = "cargo",
     bin_name = "cargo",
     version,
-    about = "Initialise axum structur project",
+    about = "Generate a structured Axum application",
     long_about = "\
 Generate a structured Axum application with a single command.
 
@@ -79,7 +79,7 @@ EXAMPLES:
 
 #[derive(Debug, Args)]
 pub struct NewArgs {
-    /// Nom du projet et du futur crate Cargo.
+    ///  Project name and Cargo package name.
     #[arg(
         value_name = "NAME",
         help = "Name of the project and its Cargo package",
@@ -94,7 +94,7 @@ Examples of valid names: mon-api, mon_api, api2."
     )]
     pub name: String,
 
-    /// Dossier parent dans lequel créer le projet.
+    /// Parent directory in which to create the project.
     #[arg(
         long,
         value_name = "DIRECTORY",

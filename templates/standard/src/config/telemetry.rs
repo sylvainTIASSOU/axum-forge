@@ -3,10 +3,10 @@ use std::{net::SocketAddr, time::Duration};
 use axum::{
     body::Body,
     extract::{ConnectInfo, MatchedPath},
-    http::{HeaderName, Request, Response,StatusCode}
+    http::{HeaderName, Request, Response, StatusCode},
 };
 use tower_http::classify::ServerErrorsFailureClass;
-use tracing::{field, Span, Level};
+use tracing::{Level, Span, field};
 
 pub fn make_span_with(request: &Request<Body>) -> Span {
     let route_key = request
@@ -20,8 +20,8 @@ pub fn make_span_with(request: &Request<Body>) -> Span {
         .and_then(|value| value.to_str().ok())
         .unwrap_or("unknown");
 
-    // Il s'agit uniquement de l'adresse du pair directement connecté.
-    // X-Forwarded-For n'est volontairement pas consulté.
+    // This is the IP address of the directly connected peer.
+    // X-Forwarded-For is intentionally not trusted.
     let client_ip = request
         .extensions()
         .get::<ConnectInfo<SocketAddr>>()
@@ -40,11 +40,7 @@ pub fn make_span_with(request: &Request<Body>) -> Span {
     )
 }
 
-pub fn on_response(
-    response: &Response<Body>,
-    latency: Duration,
-    span: &Span,
-) {
+pub fn on_response(response: &Response<Body>, latency: Duration, span: &Span) {
     let status = response.status();
 
     span.record("status", u64::from(status.as_u16()));
@@ -73,11 +69,7 @@ fn level_for_status(status: StatusCode) -> Level {
     }
 }
 
-pub fn on_failure(
-    error: ServerErrorsFailureClass,
-    latency: Duration,
-    span: &Span,
-) {
+pub fn on_failure(error: ServerErrorsFailureClass, latency: Duration, span: &Span) {
     span.record("latency_ms", latency_to_ms(latency));
     span.record("error", field::display(error));
 
@@ -96,22 +88,13 @@ mod tests {
     fn successful_responses_are_logged_as_info() {
         assert_eq!(level_for_status(StatusCode::OK), Level::INFO);
         assert_eq!(level_for_status(StatusCode::CREATED), Level::INFO);
-        assert_eq!(
-            level_for_status(StatusCode::NOT_MODIFIED),
-            Level::INFO
-        );
+        assert_eq!(level_for_status(StatusCode::NOT_MODIFIED), Level::INFO);
     }
 
     #[test]
     fn client_errors_are_logged_as_warnings() {
-        assert_eq!(
-            level_for_status(StatusCode::BAD_REQUEST),
-            Level::WARN
-        );
-        assert_eq!(
-            level_for_status(StatusCode::NOT_FOUND),
-            Level::WARN
-        );
+        assert_eq!(level_for_status(StatusCode::BAD_REQUEST), Level::WARN);
+        assert_eq!(level_for_status(StatusCode::NOT_FOUND), Level::WARN);
     }
 
     #[test]
@@ -120,9 +103,6 @@ mod tests {
             level_for_status(StatusCode::INTERNAL_SERVER_ERROR),
             Level::ERROR
         );
-        assert_eq!(
-            level_for_status(StatusCode::BAD_GATEWAY),
-            Level::ERROR
-        );
+        assert_eq!(level_for_status(StatusCode::BAD_GATEWAY), Level::ERROR);
     }
 }
