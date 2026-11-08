@@ -9,8 +9,8 @@ const RUST_KEYWORDS: &[&str] = &[
     "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub",
     "ref", "return", "self", "static", "struct", "super", "trait", "true", "type", "unsafe", "use",
     "where", "while", // Reserved keywords.
-    "abstract", "become", "box", "do", "final", "gen", "macro", "override", "priv", "try", "typeof",
-    "unsized", "virtual", "yield",
+    "abstract", "become", "box", "do", "final", "gen", "macro", "override", "priv", "try",
+    "typeof", "unsized", "virtual", "yield",
 ];
 
 pub fn convert_to_module_name(project_name: &str) -> String {
